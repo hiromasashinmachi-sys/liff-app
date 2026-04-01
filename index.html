@@ -362,11 +362,15 @@
         // プロフィール取得失敗時はそのまま続行
       }
 
-      fetch(GAS_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ name: profile.displayName, dates: selected.map(s => s.date), userId: profile.userId })
+      const params = new URLSearchParams({
+        name: profile.displayName,
+        userId: profile.userId,
+        dates: selected.map(s => s.date).join("、")
+      });
+
+      fetch(GAS_URL + "?" + params.toString(), {
+        method: "GET",
+        mode: "no-cors"
       }).then(() => {
         showToast("登録しました！");
         setTimeout(() => liff.closeWindow(), 1500);
