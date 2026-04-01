@@ -207,7 +207,7 @@
   <p class="selected-count" id="selectedCount"></p>
 
   <div class="actions">
-    <button class="btn btn-primary" id="sendBtn" disabled>LINEで送信する</button>
+    <button class="btn btn-primary" id="sendBtn" disabled>登録する</button>
     <button class="btn btn-secondary" id="clearBtn">選択をリセット</button>
   </div>
 
@@ -269,32 +269,47 @@
       updateUI();
     });
 
-    // --- LIFF 初期化 & 送信 ---
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzKbpSfhWh8_qHm_xYM3f7EjSLlSecVUb3vLNfWThJ3Yp2HxzPZEG8zjgs5MveM6dA6xQ/exec";
+
+    // --- LIFF 初期化 ---
     liff.init({ liffId: LIFF_ID })
       .then(() => {
         if (!liff.isLoggedIn()) liff.login();
       })
       .catch(err => showToast("LIFF初期化エラー: " + err.message));
 
+    // --- 送信 ---
     sendBtn.addEventListener("click", async () => {
       const selected = getChecked();
       if (selected.length === 0) return;
 
-      const lines = selected.map(s => `✅ ${s.date}${s.label ? "　" + s.label : ""}`);
-      const message = `【参加可能な日程】\n${lines.join("\n")}`;
+      sendBtn.disabled = true;
+      sendBtn.textContent = "送信中...";
 
-      if (!liff.isInClient()) {
-        // ブラウザ確認用
-        alert("送信内容（LIFFアプリ外のため実際の送信はスキップ）:\n\n" + message);
-        return;
+      // LIFFプロフィール取得
+      let name = "不明";
+      try {
+        const profile = await liff.getProfile();
+        name = profile.displayName;
+      } catch (e) {
+        // プロフィール取得失敗時はそのまま続行
       }
 
+      const dates = selected.map(s => s.label ? `${s.date} ${s.label}` : s.date);
+
       try {
-        await liff.sendMessages([{ type: "text", text: message }]);
-        showToast("送信しました！");
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ name, dates }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast("登録しました！");
         setTimeout(() => liff.closeWindow(), 1500);
       } catch (err) {
         showToast("送信に失敗しました: " + err.message);
+        sendBtn.disabled = false;
+        sendBtn.textContent = "登録する";
       }
     });
 
