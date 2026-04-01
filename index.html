@@ -366,7 +366,7 @@
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: profile.displayName, dates: selected.map(s => s.date) })
+        body: JSON.stringify({ name: profile.displayName, dates: selected.map(s => s.date), userId: profile.userId })
       }).then(() => {
         showToast("登録しました！");
         setTimeout(() => liff.closeWindow(), 1500);
