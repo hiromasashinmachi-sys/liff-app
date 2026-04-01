@@ -287,30 +287,26 @@
       sendBtn.textContent = "送信中...";
 
       // LIFFプロフィール取得
-      let name = "不明";
+      let profile = { displayName: "不明" };
       try {
-        const profile = await liff.getProfile();
-        name = profile.displayName;
+        profile = await liff.getProfile();
       } catch (e) {
         // プロフィール取得失敗時はそのまま続行
       }
 
-      const dates = selected.map(s => s.label ? `${s.date} ${s.label}` : s.date);
-
-      try {
-        const res = await fetch(GAS_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ name, dates }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      fetch(GAS_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: profile.displayName, dates: selected.map(s => s.date) })
+      }).then(() => {
         showToast("登録しました！");
         setTimeout(() => liff.closeWindow(), 1500);
-      } catch (err) {
+      }).catch(err => {
         showToast("送信に失敗しました: " + err.message);
         sendBtn.disabled = false;
         sendBtn.textContent = "登録する";
-      }
+      });
     });
 
     // --- トースト ---
