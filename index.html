@@ -258,14 +258,14 @@
   <script>
     // ============================================================
     // 日程データ（毎月ここだけ変更する）
-    // format: { date: "表示用の日付", label: "補足テキスト（省略可）" }
+    // format: { date, time, place, mapUrl }
     // ============================================================
     const SCHEDULES = [
-      { date: "4月5日（日）", label: "13:00〜15:00" },
-      { date: "4月12日（日）", label: "10:00〜12:00" },
-      { date: "4月19日（日）", label: "14:00〜16:00" },
-      { date: "4月23日（木）", label: "19:00〜21:00" },
-      { date: "4月26日（日）", label: "10:00〜12:00" },
+      { date: "4月5日（日）",  time: "13:00〜15:00", place: "〇〇ビル3階会議室", mapUrl: "https://maps.google.com/?q=東京都渋谷区" },
+      { date: "4月12日（日）", time: "10:00〜12:00", place: "△△センター2階",    mapUrl: "https://maps.google.com/?q=東京都新宿区" },
+      { date: "4月19日（日）", time: "14:00〜16:00", place: "〇〇ビル3階会議室", mapUrl: "https://maps.google.com/?q=東京都渋谷区" },
+      { date: "4月23日（木）", time: "19:00〜21:00", place: "〇〇ビル3階会議室", mapUrl: "https://maps.google.com/?q=東京都渋谷区" },
+      { date: "4月26日（日）", time: "10:00〜12:00", place: "〇〇ビル3階会議室", mapUrl: "https://maps.google.com/?q=東京都渋谷区" },
     ];
     // ============================================================
 
@@ -281,7 +281,7 @@
           <input type="checkbox" value="${i}" disabled />
           <span class="date-text">
             <span class="date-main">${s.date}<span class="full-badge" id="badge-${i}" style="display:none">満員</span></span>
-            ${s.label ? `<span class="date-sub">${s.label}</span>` : ""}
+            <span class="date-sub">${s.time}　<a href="${s.mapUrl}" target="_blank" rel="noopener" style="color:#06c755;text-decoration:none;">📍${s.place}</a></span>
           </span>
         </label>`;
       list.appendChild(li);
@@ -365,7 +365,10 @@
       const params = new URLSearchParams({
         name: profile.displayName,
         userId: profile.userId,
-        dates: selected.map(s => s.date).join("、")
+        dates:   selected.map(s => s.date).join(","),
+        times:   selected.map(s => s.time).join(","),
+        places:  selected.map(s => s.place).join(","),
+        mapUrls: selected.map(s => s.mapUrl).join(",")
       });
 
       fetch(GAS_URL + "?" + params.toString(), {
