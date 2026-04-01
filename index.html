@@ -124,6 +124,19 @@
       margin-top: 2px;
     }
 
+    .full-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #e53935;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+
+    .schedule-list li.is-full label {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .actions {
       display: flex;
       flex-direction: column;
@@ -233,16 +246,33 @@
     const list = document.getElementById("scheduleList");
     SCHEDULES.forEach((s, i) => {
       const li = document.createElement("li");
+      li.dataset.index = i;
       li.innerHTML = `
         <label>
           <input type="checkbox" value="${i}" />
           <span class="date-text">
-            <span class="date-main">${s.date}</span>
+            <span class="date-main">${s.date}<span class="full-badge" id="badge-${i}" style="display:none">満員</span></span>
             ${s.label ? `<span class="date-sub">${s.label}</span>` : ""}
           </span>
         </label>`;
       list.appendChild(li);
     });
+
+    // --- 満員表示を適用 ---
+    function applyCapacity(counts) {
+      SCHEDULES.forEach((s, i) => {
+        const count = counts[s.date] || 0;
+        if (count >= 30) {
+          const li = list.querySelector(`li[data-index="${i}"]`);
+          const cb = li.querySelector("input");
+          li.classList.add("is-full");
+          cb.disabled = true;
+          cb.checked = false;
+          document.getElementById(`badge-${i}`).style.display = "inline";
+        }
+      });
+      updateUI();
+    }
 
     // --- チェックボックス変化 ---
     const sendBtn = document.getElementById("sendBtn");
@@ -271,11 +301,14 @@
 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzKbpSfhWh8_qHm_xYM3f7EjSLlSecVUb3vLNfWThJ3Yp2HxzPZEG8zjgs5MveM6dA6xQ/exec";
 
-    // --- LIFF 初期化 ---
+    // --- LIFF 初期化 & 参加者数取得 ---
     liff.init({ liffId: LIFF_ID })
       .then(() => {
         if (!liff.isLoggedIn()) liff.login();
+        return fetch(GAS_URL);
       })
+      .then(res => res.json())
+      .then(data => applyCapacity(data.counts || {}))
       .catch(err => showToast("LIFF初期化エラー: " + err.message));
 
     // --- 送信 ---
