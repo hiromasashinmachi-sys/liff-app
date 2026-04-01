@@ -205,6 +205,34 @@
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+
+    #loading {
+      text-align: center;
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ccc;
+      border-top-color: #06c755;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .schedule-list input[type="checkbox"]:disabled {
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -218,9 +246,10 @@
   </div>
 
   <p class="selected-count" id="selectedCount"></p>
+  <p id="loading"><span class="spinner"></span>空き状況を確認中...</p>
 
   <div class="actions">
-    <button class="btn btn-primary" id="sendBtn" disabled>登録する</button>
+    <button class="btn btn-primary" id="sendBtn" disabled>確認中...</button>
     <button class="btn btn-secondary" id="clearBtn">選択をリセット</button>
   </div>
 
@@ -249,7 +278,7 @@
       li.dataset.index = i;
       li.innerHTML = `
         <label>
-          <input type="checkbox" value="${i}" />
+          <input type="checkbox" value="${i}" disabled />
           <span class="date-text">
             <span class="date-main">${s.date}<span class="full-badge" id="badge-${i}" style="display:none">満員</span></span>
             ${s.label ? `<span class="date-sub">${s.label}</span>` : ""}
@@ -258,19 +287,22 @@
       list.appendChild(li);
     });
 
-    // --- 満員表示を適用 ---
+    // --- 満員表示を適用・ロード完了処理 ---
     function applyCapacity(counts) {
       SCHEDULES.forEach((s, i) => {
+        const li = list.querySelector(`li[data-index="${i}"]`);
+        const cb = li.querySelector("input");
         const count = counts[s.date] || 0;
         if (count >= 30) {
-          const li = list.querySelector(`li[data-index="${i}"]`);
-          const cb = li.querySelector("input");
           li.classList.add("is-full");
           cb.disabled = true;
-          cb.checked = false;
           document.getElementById(`badge-${i}`).style.display = "inline";
+        } else {
+          cb.disabled = false;
         }
       });
+      document.getElementById("loading").style.display = "none";
+      sendBtn.textContent = "登録する";
       updateUI();
     }
 
@@ -309,7 +341,10 @@
       })
       .then(res => res.json())
       .then(data => applyCapacity(data.counts || {}))
-      .catch(err => showToast("LIFF初期化エラー: " + err.message));
+      .catch(err => {
+        showToast("初期化エラー: " + err.message);
+        applyCapacity({});
+      });
 
     // --- 送信 ---
     sendBtn.addEventListener("click", async () => {
