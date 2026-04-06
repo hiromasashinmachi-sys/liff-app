@@ -132,7 +132,16 @@
       white-space: nowrap;
     }
 
-    .schedule-list li.is-full label {
+    .registered-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #e53935;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+
+    .schedule-list li.is-full label,
+    .schedule-list li.is-registered label {
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -280,20 +289,24 @@
         <label>
           <input type="checkbox" value="${i}" disabled />
           <span class="date-text">
-            <span class="date-main">${s.date}<span class="full-badge" id="badge-${i}" style="display:none">満員</span></span>
+            <span class="date-main">${s.date}<span class="full-badge" id="badge-${i}" style="display:none">満員</span><span class="registered-badge" id="reg-badge-${i}" style="display:none">✅ 登録済み</span></span>
             <span class="date-sub">${s.time}　<a href="${s.mapUrl}" target="_blank" rel="noopener" style="color:#06c755;text-decoration:none;">📍${s.place}</a></span>
           </span>
         </label>`;
       list.appendChild(li);
     });
 
-    // --- 満員表示を適用・ロード完了処理 ---
-    function applyCapacity(counts) {
+    // --- 満員・登録済み表示を適用・ロード完了処理 ---
+    function applyCapacity(counts, registeredDates) {
       SCHEDULES.forEach((s, i) => {
         const li = list.querySelector(`li[data-index="${i}"]`);
         const cb = li.querySelector("input");
         const count = counts[s.date] || 0;
-        if (count >= 30) {
+        if (registeredDates.includes(s.date)) {
+          li.classList.add("is-registered");
+          cb.disabled = true;
+          document.getElementById(`reg-badge-${i}`).style.display = "inline";
+        } else if (count >= 30) {
           li.classList.add("is-full");
           cb.disabled = true;
           document.getElementById(`badge-${i}`).style.display = "inline";
@@ -314,6 +327,7 @@
 
     function getChecked() {
       return [...document.querySelectorAll("#scheduleList input:checked")]
+        .filter(cb => !cb.disabled)
         .map(cb => SCHEDULES[parseInt(cb.value)]);
     }
 
@@ -333,17 +347,32 @@
 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzKbpSfhWh8_qHm_xYM3f7EjSLlSecVUb3vLNfWThJ3Yp2HxzPZEG8zjgs5MveM6dA6xQ/exec";
 
-    // --- LIFF 初期化 & 参加者数取得 ---
+    // --- LIFF 初期化 & 参加者数・登録済み日程取得 ---
+    let _userId = null;
+
     liff.init({ liffId: LIFF_ID })
       .then(() => {
         if (!liff.isLoggedIn()) liff.login();
-        return fetch(GAS_URL);
+        return liff.getProfile();
       })
-      .then(res => res.json())
-      .then(data => applyCapacity(data.counts || {}))
+      .then(profile => {
+        _userId = profile.userId;
+        const regParams = new URLSearchParams({
+          action: "getRegistrations",
+          userId: profile.userId
+        });
+        return Promise.all([
+          fetch(GAS_URL).then(r => r.json()),
+          fetch(GAS_URL + "?" + regParams.toString()).then(r => r.json())
+        ]);
+      })
+      .then(([countData, regData]) => {
+        const registeredDates = (regData.schedules || []).map(s => s.date);
+        applyCapacity(countData.counts || {}, registeredDates);
+      })
       .catch(err => {
         showToast("初期化エラー: " + err.message);
-        applyCapacity({});
+        applyCapacity({}, []);
       });
 
     // --- 送信 ---
@@ -355,7 +384,7 @@
       sendBtn.textContent = "送信中...";
 
       // LIFFプロフィール取得
-      let profile = { displayName: "不明" };
+      let profile = { displayName: "不明", userId: _userId || "" };
       try {
         profile = await liff.getProfile();
       } catch (e) {
