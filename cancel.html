@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>日程キャンセル</title>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      padding: 24px 16px 40px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      background: #e53935;
+      color: #fff;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .schedule-list {
+      list-style: none;
+      padding: 8px 0;
+    }
+
+    .schedule-list li {
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .schedule-list li:last-child {
+      border-bottom: none;
+    }
+
+    .schedule-list label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      cursor: pointer;
+      font-size: 15px;
+      color: #333;
+      transition: background 0.15s;
+    }
+
+    .schedule-list label:active {
+      background: #fff5f5;
+    }
+
+    .schedule-list input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      flex-shrink: 0;
+      position: relative;
+      transition: border-color 0.15s, background 0.15s;
+      cursor: pointer;
+    }
+
+    .schedule-list input[type="checkbox"]:checked {
+      background: #e53935;
+      border-color: #e53935;
+    }
+
+    .schedule-list input[type="checkbox"]:checked::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 7px;
+      height: 12px;
+      border: 2.5px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .schedule-list input[type="checkbox"]:disabled {
+      cursor: not-allowed;
+    }
+
+    .date-text {
+      flex: 1;
+    }
+
+    .date-main {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .date-sub {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 32px 18px;
+      font-size: 14px;
+      color: #999;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-danger {
+      background: #e53935;
+      color: #fff;
+    }
+
+    .btn-danger:disabled {
+      background: #f5a5a3;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #555;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .selected-count {
+      text-align: center;
+      font-size: 13px;
+      color: #e53935;
+      font-weight: 600;
+      margin-bottom: 10px;
+      min-height: 18px;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #333;
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    #loading {
+      text-align: center;
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ccc;
+      border-top-color: #e53935;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .success-screen {
+      display: none;
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .success-screen .icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+
+    .success-screen .title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+
+    .success-screen .desc {
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="mainContent">
+    <h1>日程キャンセル</h1>
+    <p class="subtitle">キャンセルする日程を選んでください</p>
+
+    <div class="card">
+      <div class="card-header">📅 登録済みの日程</div>
+      <ul class="schedule-list" id="scheduleList"></ul>
+    </div>
+
+    <p class="selected-count" id="selectedCount"></p>
+    <p id="loading"><span class="spinner"></span>登録情報を確認中...</p>
+
+    <div class="actions">
+      <button class="btn btn-danger" id="cancelBtn" disabled>確認中...</button>
+      <button class="btn btn-secondary" id="clearBtn">選択をリセット</button>
+    </div>
+  </div>
+
+  <div class="success-screen" id="successScreen">
+    <div class="icon">✅</div>
+    <div class="title">キャンセルしました</div>
+    <div class="desc">選択した日程のキャンセルが完了しました</div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const LIFF_ID = "2009663520-yZccTYTv";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzKbpSfhWh8_qHm_xYM3f7EjSLlSecVUb3vLNfWThJ3Yp2HxzPZEG8zjgs5MveM6dA6xQ/exec";
+
+    const list = document.getElementById("scheduleList");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const countEl = document.getElementById("selectedCount");
+
+    // --- 登録済み日程を表示 ---
+    function renderSchedules(schedules) {
+      list.innerHTML = "";
+      document.getElementById("loading").style.display = "none";
+
+      if (!schedules || schedules.length === 0) {
+        list.innerHTML = '<li><div class="empty-message">登録済みの日程はありません</div></li>';
+        cancelBtn.textContent = "キャンセルする";
+        cancelBtn.disabled = true;
+        return;
+      }
+
+      schedules.forEach((s, i) => {
+        const li = document.createElement("li");
+        li.dataset.index = i;
+        const mapLink = s.mapUrl
+          ? `<a href="${s.mapUrl}" target="_blank" rel="noopener" style="color:#e53935;text-decoration:none;">📍${s.place}</a>`
+          : `📍${s.place || ""}`;
+        li.innerHTML = `
+          <label>
+            <input type="checkbox" value="${i}" />
+            <span class="date-text">
+              <span class="date-main">${s.date}</span>
+              <span class="date-sub">${s.time || ""}　${mapLink}</span>
+            </span>
+          </label>`;
+        list.appendChild(li);
+      });
+
+      cancelBtn.textContent = "キャンセルする";
+      cancelBtn.disabled = true;
+      list.addEventListener("change", updateUI);
+      updateUI();
+    }
+
+    function getCheckedSchedules(schedules) {
+      return [...document.querySelectorAll("#scheduleList input:checked")]
+        .map(cb => schedules[parseInt(cb.value)]);
+    }
+
+    function updateUI() {
+      const checked = [...document.querySelectorAll("#scheduleList input:checked")];
+      cancelBtn.disabled = checked.length === 0;
+      countEl.textContent = checked.length > 0 ? `${checked.length}件 選択中` : "";
+    }
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      document.querySelectorAll("#scheduleList input").forEach(cb => cb.checked = false);
+      updateUI();
+    });
+
+    // --- LIFF 初期化 & 登録情報取得 ---
+    let userProfile = null;
+    let registeredSchedules = [];
+
+    liff.init({ liffId: LIFF_ID })
+      .then(() => {
+        if (!liff.isLoggedIn()) liff.login();
+        return liff.getProfile();
+      })
+      .then(profile => {
+        userProfile = profile;
+        const params = new URLSearchParams({
+          action: "getRegistrations",
+          userId: profile.userId
+        });
+        return fetch(GAS_URL + "?" + params.toString());
+      })
+      .then(res => res.json())
+      .then(data => {
+        registeredSchedules = data.schedules || [];
+        renderSchedules(registeredSchedules);
+      })
+      .catch(err => {
+        showToast("初期化エラー: " + err.message);
+        document.getElementById("loading").style.display = "none";
+        cancelBtn.textContent = "キャンセルする";
+        cancelBtn.disabled = true;
+      });
+
+    // --- キャンセル送信 ---
+    cancelBtn.addEventListener("click", async () => {
+      const selected = getCheckedSchedules(registeredSchedules);
+      if (selected.length === 0) return;
+
+      cancelBtn.disabled = true;
+      cancelBtn.textContent = "送信中...";
+
+      const params = new URLSearchParams({
+        action: "cancel",
+        name: userProfile ? userProfile.displayName : "不明",
+        userId: userProfile ? userProfile.userId : "",
+        dates:   selected.map(s => s.date).join(","),
+        times:   selected.map(s => s.time || "").join(","),
+        places:  selected.map(s => s.place || "").join(","),
+        mapUrls: selected.map(s => s.mapUrl || "").join(",")
+      });
+
+      fetch(GAS_URL + "?" + params.toString(), {
+        method: "GET",
+        mode: "no-cors"
+      }).then(() => {
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("successScreen").style.display = "block";
+        setTimeout(() => liff.closeWindow(), 2500);
+      }).catch(err => {
+        showToast("送信に失敗しました: " + err.message);
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = "キャンセルする";
+      });
+    });
+
+    // --- トースト ---
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+  </script>
+</body>
+</html>
