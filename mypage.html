@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>参加日程確認</title>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      padding: 24px 16px 40px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .user-name {
+      font-size: 13px;
+      color: #06c755;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 20px;
+      min-height: 18px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      background: #06c755;
+      color: #fff;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .schedule-list {
+      list-style: none;
+      padding: 8px 0;
+    }
+
+    .schedule-list li {
+      border-bottom: 1px solid #f0f0f0;
+      padding: 14px 18px;
+    }
+
+    .schedule-list li:last-child {
+      border-bottom: none;
+    }
+
+    .date-main {
+      font-weight: 600;
+      font-size: 15px;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+
+    .date-sub {
+      font-size: 13px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .date-sub a {
+      color: #06c755;
+      text-decoration: none;
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 32px 18px;
+      font-size: 14px;
+      color: #999;
+    }
+
+    .count-badge {
+      text-align: center;
+      font-size: 13px;
+      color: #06c755;
+      font-weight: 600;
+      margin-bottom: 20px;
+      min-height: 18px;
+    }
+
+    #loading {
+      text-align: center;
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ccc;
+      border-top-color: #06c755;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #333;
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>参加日程確認</h1>
+  <p class="subtitle">あなたの登録済み日程です</p>
+  <p class="user-name" id="userName"></p>
+
+  <p id="loading"><span class="spinner"></span>登録情報を確認中...</p>
+  <p class="count-badge" id="countBadge"></p>
+
+  <div class="card">
+    <div class="card-header">📅 登録済みの日程</div>
+    <ul class="schedule-list" id="scheduleList"></ul>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const LIFF_ID = "2009663520-86odhyqY";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzKbpSfhWh8_qHm_xYM3f7EjSLlSecVUb3vLNfWThJ3Yp2HxzPZEG8zjgs5MveM6dA6xQ/exec";
+
+    const list = document.getElementById("scheduleList");
+
+    function renderSchedules(schedules) {
+      document.getElementById("loading").style.display = "none";
+      list.innerHTML = "";
+
+      if (!schedules || schedules.length === 0) {
+        list.innerHTML = '<li><div class="empty-message">現在登録されている日程はありません</div></li>';
+        return;
+      }
+
+      document.getElementById("countBadge").textContent = `${schedules.length}件 登録中`;
+
+      schedules.forEach(s => {
+        const li = document.createElement("li");
+        const mapLink = s.mapUrl
+          ? `<a href="${s.mapUrl}" target="_blank" rel="noopener">📍${s.place}</a>`
+          : (s.place ? `📍${s.place}` : "");
+        li.innerHTML = `
+          <div class="date-main">${s.date}</div>
+          <div class="date-sub">${s.time || ""}${mapLink ? "　" + mapLink : ""}</div>`;
+        list.appendChild(li);
+      });
+    }
+
+    liff.init({ liffId: LIFF_ID })
+      .then(() => {
+        if (!liff.isLoggedIn()) liff.login();
+        return liff.getProfile();
+      })
+      .then(profile => {
+        document.getElementById("userName").textContent = profile.displayName + " さん";
+        const params = new URLSearchParams({
+          action: "getRegistrations",
+          userId: profile.userId
+        });
+        return fetch(GAS_URL + "?" + params.toString());
+      })
+      .then(res => res.json())
+      .then(data => {
+        renderSchedules(data.schedules || []);
+      })
+      .catch(err => {
+        showToast("エラー: " + err.message);
+        document.getElementById("loading").style.display = "none";
+        list.innerHTML = '<li><div class="empty-message">情報の取得に失敗しました</div></li>';
+      });
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+  </script>
+</body>
+</html>
