@@ -54,40 +54,97 @@
       padding: 20px 18px;
     }
 
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 14px;
-      color: #333;
+    /* 日程チェックボックスリスト */
+    .date-list {
+      list-style: none;
+      padding: 8px 0;
     }
 
-    .info-row:last-child {
+    .date-list li {
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .date-list li:last-child {
       border-bottom: none;
     }
 
-    .info-label {
-      color: #888;
-      font-size: 13px;
+    .date-list label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      cursor: pointer;
+      font-size: 15px;
+      color: #333;
+      transition: background 0.15s;
+    }
+
+    .date-list label:active {
+      background: #f5fdf7;
+    }
+
+    .date-list li.is-issued label {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .date-list input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
       flex-shrink: 0;
-      margin-right: 12px;
+      position: relative;
+      transition: border-color 0.15s, background 0.15s;
+      cursor: pointer;
     }
 
-    .info-value {
+    .date-list input[type="checkbox"]:checked {
+      background: #06c755;
+      border-color: #06c755;
+    }
+
+    .date-list input[type="checkbox"]:checked::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 7px;
+      height: 12px;
+      border: 2.5px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .date-list input[type="checkbox"]:disabled {
+      cursor: not-allowed;
+      background: #eee;
+      border-color: #ddd;
+    }
+
+    .date-text {
+      flex: 1;
+    }
+
+    .date-main {
       font-weight: 600;
-      text-align: right;
+      font-size: 15px;
     }
 
-    .amount-value {
-      font-size: 20px;
+    .issued-badge {
+      font-size: 12px;
       font-weight: 700;
-      color: #06c755;
+      color: #e53935;
+      margin-left: 6px;
+      white-space: nowrap;
     }
 
+    /* 会社名フォーム */
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 0;
     }
 
     .form-label {
@@ -117,6 +174,7 @@
       color: #bbb;
     }
 
+    /* ボタン */
     .actions {
       display: flex;
       flex-direction: column;
@@ -149,30 +207,42 @@
       transform: none;
     }
 
-    .issued-box {
+    /* 参加登録なし */
+    .empty-box {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 28px 18px;
+      padding: 32px 18px;
       gap: 10px;
     }
 
-    .issued-icon {
-      font-size: 48px;
+    .empty-icon {
+      font-size: 44px;
     }
 
-    .issued-text {
-      font-size: 16px;
+    .empty-text {
+      font-size: 15px;
       font-weight: 700;
       color: #333;
     }
 
-    .issued-sub {
+    .empty-sub {
       font-size: 13px;
       color: #888;
       text-align: center;
     }
 
+    /* 選択件数 */
+    .selected-count {
+      text-align: center;
+      font-size: 13px;
+      color: #06c755;
+      font-weight: 600;
+      margin-bottom: 10px;
+      min-height: 18px;
+    }
+
+    /* トースト */
     #toast {
       position: fixed;
       bottom: 24px;
@@ -221,6 +291,10 @@
     #mainContent {
       display: none;
     }
+
+    #companyCard {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -231,41 +305,26 @@
   <p id="loading"><span class="spinner"></span>確認中...</p>
 
   <div id="mainContent">
-    <!-- 発行済みの場合 -->
-    <div id="issuedView" class="card" style="display:none;">
-      <div class="card-header">🧾 領収書</div>
-      <div class="issued-box">
-        <div class="issued-icon">✅</div>
-        <div class="issued-text">領収書は発行済みです</div>
-        <div class="issued-sub">領収書はすでに発行されています。<br>再発行はできません。</div>
+
+    <!-- 参加登録なし -->
+    <div id="emptyView" class="card" style="display:none;">
+      <div class="card-header">🧾 領収書発行</div>
+      <div class="empty-box">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">参加登録が確認できません</div>
+        <div class="empty-sub">参加登録が完了していないため<br>領収書を発行できません。</div>
       </div>
     </div>
 
-    <!-- 未発行の場合：領収書内容確認＋会社名入力 -->
+    <!-- 日程選択 -->
     <div id="formView" style="display:none;">
       <div class="card">
-        <div class="card-header">🧾 領収書の内容</div>
-        <div class="card-body">
-          <div class="info-row">
-            <span class="info-label">発行者</span>
-            <span class="info-value">Light交流会</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">但し書き</span>
-            <span class="info-value">交流会参加費として</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">金額</span>
-            <span class="info-value amount-value">¥3,000（税込）</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">発行日</span>
-            <span class="info-value" id="issueDateDisplay"></span>
-          </div>
-        </div>
+        <div class="card-header">📅 日程を選択してください</div>
+        <ul class="date-list" id="dateList"></ul>
       </div>
 
-      <div class="card">
+      <!-- 会社名入力（日程選択後に表示） -->
+      <div class="card" id="companyCard">
         <div class="card-header">✏️ 宛名を入力</div>
         <div class="card-body">
           <div class="form-group">
@@ -281,10 +340,13 @@
         </div>
       </div>
 
+      <p class="selected-count" id="selectedCount"></p>
+
       <div class="actions">
         <button class="btn btn-primary" id="issueBtn" disabled>発行する</button>
       </div>
     </div>
+
   </div>
 
   <div id="toast"></div>
@@ -296,37 +358,21 @@
     let _userId = null;
     let _userName = null;
 
-    // 発行日の表示
     function getTodayStr() {
       const d = new Date();
       return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
     }
 
-    document.getElementById("issueDateDisplay").textContent = getTodayStr();
-
-    // 会社名入力でボタン活性化
-    const companyInput = document.getElementById("companyName");
-    const issueBtn = document.getElementById("issueBtn");
-
-    companyInput.addEventListener("input", () => {
-      issueBtn.disabled = companyInput.value.trim() === "";
-    });
-
-    // 発行済みチェック後の画面切り替え
-    function showIssuedView() {
-      document.getElementById("issuedView").style.display = "block";
-      document.getElementById("formView").style.display = "none";
-      document.getElementById("mainContent").style.display = "block";
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
-    function showFormView() {
-      document.getElementById("issuedView").style.display = "none";
-      document.getElementById("formView").style.display = "block";
-      document.getElementById("mainContent").style.display = "block";
-    }
-
-    // 領収書HTMLを生成
-    function generateReceiptHTML(companyName, issueDate) {
+    // 領収書HTML生成（1通分）
+    function generateReceiptHTML(companyName, eventDate, issueDate) {
       return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -341,7 +387,6 @@
       font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif;
       background: #fff;
       color: #111;
-      margin: 0;
       padding: 40px 60px;
       max-width: 600px;
       margin: 0 auto;
@@ -359,6 +404,11 @@
       font-size: 14px;
       margin-bottom: 24px;
     }
+    .addressee-label {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 4px;
+    }
     .addressee {
       font-size: 22px;
       font-weight: 700;
@@ -367,11 +417,6 @@
       margin-bottom: 24px;
       display: inline-block;
       min-width: 260px;
-    }
-    .addressee-label {
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 4px;
     }
     .amount-section {
       text-align: center;
@@ -468,6 +513,10 @@
       <td>交流会参加費として</td>
     </tr>
     <tr>
+      <th>参加日</th>
+      <td>${escapeHtml(eventDate)}</td>
+    </tr>
+    <tr>
       <th>発行者</th>
       <td>Light交流会</td>
     </tr>
@@ -482,55 +531,92 @@
 </html>`;
     }
 
-    function escapeHtml(str) {
-      return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    // 領収書ダウンロード
-    function downloadReceipt(companyName) {
-      const issueDate = getTodayStr();
-      const html = generateReceiptHTML(companyName, issueDate);
+    // 1ファイルダウンロード
+    function downloadReceiptFile(companyName, eventDate, issueDate) {
+      const html = generateReceiptHTML(companyName, eventDate, issueDate);
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `領収書_${companyName}_${issueDate}.html`;
+      a.download = `領収書_${companyName}_${eventDate}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
+    // 複数ファイルを順番にダウンロード
+    async function downloadAll(companyName, dates) {
+      const issueDate = getTodayStr();
+      for (let i = 0; i < dates.length; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 400));
+        downloadReceiptFile(companyName, dates[i], issueDate);
+      }
+    }
+
+    // UI更新
+    const issueBtn = document.getElementById("issueBtn");
+    const companyInput = document.getElementById("companyName");
+    const companyCard = document.getElementById("companyCard");
+    const countEl = document.getElementById("selectedCount");
+    const dateList = document.getElementById("dateList");
+
+    function getSelectedDates() {
+      return [...dateList.querySelectorAll("input[type='checkbox']:checked:not(:disabled)")]
+        .map(cb => cb.value);
+    }
+
+    function updateUI() {
+      const selected = getSelectedDates();
+      const company = companyInput.value.trim();
+
+      if (selected.length > 0) {
+        companyCard.style.display = "block";
+        countEl.textContent = `${selected.length}件 選択中`;
+      } else {
+        companyCard.style.display = "none";
+        countEl.textContent = "";
+      }
+
+      issueBtn.disabled = selected.length === 0 || company === "";
+    }
+
+    dateList.addEventListener("change", updateUI);
+    companyInput.addEventListener("input", updateUI);
+
     // 発行ボタン
     issueBtn.addEventListener("click", async () => {
+      const selectedDates = getSelectedDates();
       const companyName = companyInput.value.trim();
-      if (!companyName) return;
+      if (selectedDates.length === 0 || !companyName) return;
 
       issueBtn.disabled = true;
       issueBtn.textContent = "発行中...";
 
       try {
         // 領収書ダウンロード
-        downloadReceipt(companyName);
+        await downloadAll(companyName, selectedDates);
 
-        // GASに発行済みフラグを記録（no-corsで送信）
+        // GASに発行済みフラグを記録
         const params = new URLSearchParams({
           action: "issueReceipt",
           userId: _userId,
           userName: _userName,
-          companyName: companyName
+          companyName: companyName,
+          dates: selectedDates.join(",")
         });
         await fetch(GAS_URL + "?" + params.toString(), {
           method: "GET",
           mode: "no-cors"
         });
 
-        showToast("領収書を発行しました");
-        setTimeout(() => showIssuedView(), 1200);
+        // 発行した日程を「発行済み」に更新
+        selectedDates.forEach(date => markAsIssued(date));
+        companyCard.style.display = "none";
+        countEl.textContent = "";
+        companyInput.value = "";
+        issueBtn.textContent = "発行する";
+        showToast(`${selectedDates.length}件の領収書を発行しました`);
       } catch (err) {
         showToast("エラーが発生しました: " + err.message);
         issueBtn.disabled = false;
@@ -538,7 +624,37 @@
       }
     });
 
-    // LIFF初期化 → 発行済みチェック
+    // チェックボックスを「発行済み」にする
+    function markAsIssued(date) {
+      const cb = dateList.querySelector(`input[value="${CSS.escape(date)}"]`);
+      if (!cb) return;
+      const li = cb.closest("li");
+      cb.checked = false;
+      cb.disabled = true;
+      li.classList.add("is-issued");
+      const badge = li.querySelector(".issued-badge");
+      if (badge) badge.style.display = "inline";
+    }
+
+    // 日程リスト描画
+    function renderDateList(registeredDates, issuedDates) {
+      dateList.innerHTML = "";
+      registeredDates.forEach(date => {
+        const isIssued = issuedDates.includes(date);
+        const li = document.createElement("li");
+        if (isIssued) li.classList.add("is-issued");
+        li.innerHTML = `
+          <label>
+            <input type="checkbox" value="${escapeHtml(date)}" ${isIssued ? "disabled" : ""} />
+            <span class="date-text">
+              <span class="date-main">${escapeHtml(date)}<span class="issued-badge" style="display:${isIssued ? "inline" : "none"}">発行済み</span></span>
+            </span>
+          </label>`;
+        dateList.appendChild(li);
+      });
+    }
+
+    // LIFF初期化
     liff.init({ liffId: LIFF_ID })
       .then(() => {
         if (!liff.isLoggedIn()) liff.login();
@@ -547,26 +663,29 @@
       .then(profile => {
         _userId = profile.userId;
         _userName = profile.displayName;
-
         const params = new URLSearchParams({
-          action: "checkReceipt",
+          action: "getReceiptInfo",
           userId: profile.userId
         });
         return fetch(GAS_URL + "?" + params.toString()).then(r => r.json());
       })
       .then(data => {
         document.getElementById("loading").style.display = "none";
-        if (data.issued) {
-          showIssuedView();
+        document.getElementById("mainContent").style.display = "block";
+
+        const registeredDates = data.registeredDates || [];
+        const issuedDates = data.issuedDates || [];
+
+        if (registeredDates.length === 0) {
+          document.getElementById("emptyView").style.display = "block";
         } else {
-          showFormView();
+          renderDateList(registeredDates, issuedDates);
+          document.getElementById("formView").style.display = "block";
         }
       })
       .catch(err => {
         document.getElementById("loading").style.display = "none";
         showToast("初期化エラー: " + err.message);
-        // エラー時もフォームを表示（GAS側でフラグ管理できる）
-        showFormView();
       });
 
     // トースト
