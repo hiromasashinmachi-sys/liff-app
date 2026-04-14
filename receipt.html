@@ -605,10 +605,12 @@
           companyName: companyName,
           dates: selectedDates.join(",")
         });
-        await fetch(GAS_URL + "?" + params.toString(), {
+        const issueRes = await fetch(GAS_URL + "?" + params.toString(), {
           method: "GET",
-          mode: "no-cors"
+          mode: "cors"
         });
+        const issueData = await issueRes.json();
+        console.log("issueReceipt response:", issueData);
 
         // 発行した日程を「発行済み」に更新
         selectedDates.forEach(date => markAsIssued(date));
